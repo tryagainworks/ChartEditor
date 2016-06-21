@@ -1,0 +1,46 @@
+#include "clsloadsettings.h"
+
+clsLoadSettings::clsLoadSettings()
+{
+     set = QSettings("settings",QSettings::IniFormat);
+}
+
+void clsLoadSettings::fetchIntXPixIncrementCount_Normal(int &value)
+{
+value = set.value("").toInt();
+}
+
+void clsLoadSettings::fetchIntYPixIncrementCount_Normal(int &value)
+{
+value = set.value("").toInt();
+}
+
+void clsLoadSettings::fetchIntXPixIncrementCount_Ctrl(int &value)
+{
+value = set.value("").toInt();
+}
+
+void clsLoadSettings::fetchIntYPixIncrementCount_Ctrl(int &value)
+{
+value = set.value("").toInt();
+}
+
+void clsLoadSettings::fetchFltZoom(float &value)
+{
+value = set.value("").toFloat();
+}
+
+void clsLoadSettings::fetchIntGraphLineThickness(int &value)
+{
+value = set.value("").toInt();
+}
+
+void clsLoadSettings::fetchStrCommand(QString &value)
+{
+value = set.value("").toString();
+}
+
+void clsLoadSettings::fetchStrPDFDirPath(QString &value)
+{
+value = set.value("").toString();
+}

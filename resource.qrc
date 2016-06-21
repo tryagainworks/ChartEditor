@@ -1,0 +1,26 @@
+<RCC>
+    <qresource prefix="/new/Images_off">
+        <file>vdot.png</file>
+        <file>hdot.png</file>
+        <file>dl.png</file>
+        <file>sl.png</file>
+        <file>graph.png</file>
+        <file>number.png</file>
+        <file>eraser.png</file>
+        <file>number_erase.png</file>
+        <file>trans.png</file>
+        <file>logo.png</file>
+    </qresource>
+    <qresource prefix="/new/images_on">
+        <file>number_g.png</file>
+        <file>vdot_g.png</file>
+        <file>sl_g.png</file>
+        <file>hdot_g.png</file>
+        <file>graph_g.png</file>
+        <file>eraser_g.png</file>
+        <file>dl_g.png</file>
+        <file>number_erase_g.png</file>
+        <file>trans_g.png</file>
+        <file>logo_g.png</file>
+    </qresource>
+</RCC>

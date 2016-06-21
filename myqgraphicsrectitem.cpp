@@ -1,0 +1,1165 @@
+#include "myqgraphicsrectitem.h"
+#include <QPainter>
+#include <QtMath>
+#include <QPixmap>
+#include <QPainterPath>
+
+
+//extern clsGlobalVariables clsGlobal::vecGlobal[0]->objVarGlbReadSetting;
+//extern clsWriteSettings objVarGlbWriteSetting;
+//extern QVector<clsGlobal*> clsGlobal::vecGlobal[0];
+
+myQGraphicsRectItem::myQGraphicsRectItem(shapeType _enmShape):enmShape {_enmShape}
+{
+	fnInitShapeOptionExecution();
+	//fnInitShapeOptions();
+}
+
+void myQGraphicsRectItem::fnInitShapeOptionExecution()
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		hshDisplay.insert(0,"Width");
+		hshDisplay.insert(1,"Height");
+		hshDisplay.insert(2,"LCursor");
+		hshDisplay.insert(3,"RCursor");
+		hshDisplay.insert(4,"MDraw");
+		hshDisplay.insert(5,"ADraw");
+		hshDisplay.insert(6,"Reset");
+		hshDisplay.insert(7,"LSize");
+
+		hshExecute.insert(0,&myQGraphicsRectItem::fnWidth);
+		hshExecute.insert(1,&myQGraphicsRectItem::fnHeight);
+		hshExecute.insert(2,&myQGraphicsRectItem::fnLeftCurDown);
+		hshExecute.insert(3,&myQGraphicsRectItem::fnRightCurDown);
+		hshExecute.insert(4,&myQGraphicsRectItem::fnDrawManual);
+		hshExecute.insert(5,&myQGraphicsRectItem::fnDrawAuto);
+		hshExecute.insert(6,&myQGraphicsRectItem::fnDrawReset);
+		hshExecute.insert(7,&myQGraphicsRectItem::fnLineThickness);
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnExecute(int intValue)
+{
+	qDebug()<<"Value passed ="<<intValue;
+	myQGraphicsRectItem::ScriptFunction fun;
+	fun = hshExecute.value(intValue);
+	//myQGraphicsRectItem *obj = this;
+	//QKeyEvent *evt = new QKeyEvent(QEvent::KeyPress,Qt::Key_1,Qt::NoModifier);
+	(*this.*fun)(0);
+}
+
+void myQGraphicsRectItem::fnCreateShape()
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+	case shapeType::DrawGraph:
+        clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush.setStyle(Qt::SolidPattern);
+        clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.clrWhite);
+		break;
+	case shapeType::BlankArea:
+	case shapeType::PeakNumberErase:
+	case shapeType::VDotedLine:
+	case shapeType::HDotedLine:
+        clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush.setStyle(Qt::DiagCrossPattern);
+        clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.ColorOnLocked);
+		break;
+	case shapeType::DoubleLine:
+	case shapeType::SingleLine:
+	case shapeType::Transparent:
+	case shapeType::Logo:
+        clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush.setStyle(Qt::NoBrush);
+		break;
+	}
+	fnCreateRect();
+    setBrush(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush);
+
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		fnDrawFloatText(strPeakNumber);
+		break;
+	case shapeType::PeakNumberErase:
+		break;
+	case shapeType::DrawGraph:
+		fnAdd2ChildRects();
+		break;
+	case shapeType::VDotedLine:
+		fnCreateDotedLine();
+		break;
+	case shapeType::HDotedLine:
+		fnCreateDotedLine();
+		break;
+	case shapeType::DoubleLine:
+		fnCreatePlainLine();
+		break;
+	case shapeType::SingleLine:
+		fnCreatePlainLine();
+		break;
+	case shapeType::BlankArea:
+	case shapeType::Logo:
+		break;
+	case shapeType::Transparent:
+		fnLoadBackGroundImage();
+		break;
+	}
+
+	this->moveBy(intShapeX,intShapeY);
+}
+
+void myQGraphicsRectItem::fnDrawRangeText(QString strValue)
+{
+	QGraphicsTextItem *txt;
+
+	if(objAtachedGraphicsObject_1.data()!=0)
+	{
+		txt = (QGraphicsTextItem*) objAtachedGraphicsObject_1.data();
+		txt->setPlainText(strValue);
+	}
+	else
+	{
+		txt = new QGraphicsTextItem(strValue,this);
+        txt->setFont(QFont(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getStrFontName(),clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltTextFontSize()));
+		objAtachedGraphicsObject_1.reset(txt);
+		txt->setPos(0,0);
+		qDebug() << "x = " + QString::number(scenePos().x());
+	}
+}
+
+void myQGraphicsRectItem::fnDrawFloatText(QString strValue)
+{
+	QGraphicsTextItem *txt;
+
+	if(objAtachedGraphicsObject_1.data()!=0)
+	{
+		txt = (QGraphicsTextItem*) objAtachedGraphicsObject_1.data();
+		txt->setPlainText(strValue);
+	}
+	else
+	{
+		txt = new QGraphicsTextItem(strValue,this);
+        QFont f(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getStrFontName(),clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltTextFontSize(),QFont::Normal);
+        f.setStyleStrategy(QFont::PreferAntialias);
+        //f.setStretch(QFont::ExtraCondensed);
+        f.setLetterSpacing(QFont::AbsoluteSpacing,.5);//2
+        //f.setBold(true);
+        txt->setFont(QFont(f));
+
+		objAtachedGraphicsObject_1.reset(txt);
+		QTransform tr;
+        tr = tr.fromScale(2,2); //1,1
+        txt->setTransform(tr);
+		tr = txt->transform();
+		tr.rotate(-90);
+		txt->setTransform(tr);
+        txt->setPos(-1*(this->rect().width()/2.5), pos().y()+rect().height()); //8
+		qDebug() << "x = " + QString::number(scenePos().x());
+	}
+
+	if(objAtachedGraphicsObject_2.data()==0)
+	{
+		QGraphicsPathItem *pth = new QGraphicsPathItem(this);
+		float fltXValue = this->rect().x()+((this->rect().width()/6)*3);
+		QPainterPath ppth(QPointF(fltXValue, this->rect().y()+10));
+        ppth.lineTo(QPointF(fltXValue, this->rect().y()+(9*2)));
+        ppth.lineTo(QPointF(fltXValue, this->rect().y()+(9*3)));
+        ppth.lineTo(QPointF(fltXValue, this->rect().y()+(9*4)));
+        QPen p = pth->pen();
+        p.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.clrDarkGrey);
+        p.setWidth(1);
+        pth->setPen(p);
+		pth->setPath(ppth);
+		objAtachedGraphicsObject_2.reset(pth);
+	}
+}
+
+void myQGraphicsRectItem::fnAdd2ChildRects()
+{
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush.setStyle(Qt::SolidPattern);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.ColorOnLocked);
+
+    float fltRectHeight = clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness(), fltRectWidth=1.0;
+
+	QGraphicsRectItem *objRect_1 = new QGraphicsRectItem(0,0,fltRectWidth,fltRectHeight,this);
+    objRect_1->setBrush(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush);
+	objAtachedGraphicsObject_1.reset(objRect_1);
+
+	QGraphicsRectItem *objRect_2 = new QGraphicsRectItem(0,0,fltRectWidth,fltRectHeight,this);
+	objRect_2->moveBy(this->rect().width()-(fltRectWidth),0);
+    objRect_2->setBrush(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objBrush);
+	objAtachedGraphicsObject_2.reset(objRect_2);
+	objPth.isPathDefined=false;
+	objPth.blnByMouse = false;
+}
+
+void myQGraphicsRectItem::fnAddPathItem()
+{
+	QGraphicsPathItem *pth;
+	QPainterPath ppth;
+	QGraphicsRectItem *rec1, *rec2;
+
+	rec1 = (QGraphicsRectItem*)objAtachedGraphicsObject_1.data();
+	rec2 = (QGraphicsRectItem*)objAtachedGraphicsObject_2.data();
+
+	pth = new QGraphicsPathItem(this);
+
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setStyle(Qt::SolidLine);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.ColorOnLocked);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setWidth(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness());
+    pth->setPen(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen);
+    ppth = QPainterPath(QPointF(+(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness()/2), rec1->pos().y()+ rec1->rect().height()/2));
+	//ppth.lineTo(QPointF(rec1->rect().width(), rec1->pos().y()+ rec1->rect().height()/2));
+	objPth.fltNoOfPixels = rec2->pos().x() + rec2->rect().width() - rec1->pos().x();
+	objPth.fltYAxisChange=0.0;
+	objPth.fltDiff = rec1->pos().y() - rec2->pos().y();
+
+	objPth.fltYAxisChangeSign = 0;
+
+	if(objPth.fltDiff!=0)
+	{
+		objPth.fltYAxisChangeSign = objPth.fltDiff>0 ? -1 : 1;
+		objPth.fltYAxisChange = objPth.fltNoOfPixels / qAbs(objPth.fltDiff);
+	}
+
+	qreal fltChangeCount = 0.0;
+
+	bool blnDrawn=false;
+	qreal fltIncrement=0.0;
+	for(qreal iCount=0; iCount<objPth.fltNoOfPixels; iCount+=0.1)
+	{
+		fltChangeCount+=0.1;
+		if (fltChangeCount>=objPth.fltYAxisChange)
+		{
+			ppth.lineTo(ppth.currentPosition().x() ,ppth.currentPosition().y() + objPth.fltYAxisChangeSign);
+			fltChangeCount=0.0;
+			blnDrawn=false;
+		}
+		else
+		{
+			fltIncrement+=0.1;
+			if(fltIncrement>=1.0)
+			{
+				ppth.lineTo(ppth.currentPosition().x()+1 ,ppth.currentPosition().y());
+				fltIncrement-=1.0;
+			}
+		}
+	}
+
+	if(fltIncrement>0)
+	{
+		ppth.lineTo(ppth.currentPosition().x()+fltIncrement ,ppth.currentPosition().y());
+	}
+
+    ppth.lineTo(QPointF(rec2->pos().x()+ rec2->rect().width() - ((clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness()/2)), rec2->pos().y()+ rec2->rect().height()/2));
+
+	pth->setPath(ppth);
+
+	objAtachedGraphicsObject_1.reset(pth);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setStyle(Qt::SolidLine);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.ColorOnFocusIn);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setWidth(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness());
+    //rec2->setPen(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen);
+	objPth.fltCurrCursorIndex=0;
+	rec2->setPos(ppth.elementAt(objPth.fltCurrCursorIndex).x,ppth.elementAt(objPth.fltCurrCursorIndex).y - (rec2->rect().height()/2));
+	objPth.isPathDefined=true;
+
+	objPth.fltBendMovement=0;
+	objPth.blnByMouse=false;
+	blnFirst=true;
+}
+
+void myQGraphicsRectItem::fnAddPathItemMouseDraw()
+{
+	QGraphicsPathItem *pth;
+	QPainterPath ppth;
+	QGraphicsRectItem *rec1, *rec2;
+
+	rec1 = (QGraphicsRectItem*)objAtachedGraphicsObject_1.data();
+	rec2 = (QGraphicsRectItem*)objAtachedGraphicsObject_2.data();
+
+	pth = new QGraphicsPathItem(this);
+
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setStyle(Qt::SolidLine);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.ColorOnLocked);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setWidth(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness());
+    pth->setPen(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen);
+    ppth = QPainterPath(QPointF(rec1->pos().x()+(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness()/2), rec1->pos().y() + rec1->rect().height()/2));
+	//ppth.lineTo(QPointF(rec1->rect().width(), rec1->pos().y()+ rec1->rect().height()/2));
+	pth->setPath(ppth);
+
+	objAtachedGraphicsObject_1.reset(pth);
+	objPth.fltCurrCursorIndex=0;
+	objPth.isPathDefined=true;
+
+	objPth.fltBendMovement=0;
+	objPth.blnByMouse=true;
+	blnFirst=true;
+}
+
+void myQGraphicsRectItem::fnShapeReSize(bool blnIncreased, bool blnCtrl)
+{
+	QRectF myrect;
+	QGraphicsLineItem *lin;
+	QGraphicsRectItem *rec;
+	QLineF myline;
+    float fltChange= blnCtrl ? clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltXPixIncrementCount_Ctrl() : clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltXPixIncrementCount_Normal();
+	fltChange = blnIncreased ? fltChange : fltChange*-1;
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		break;
+	case shapeType::PeakNumberErase:
+		break;
+	case shapeType::BlankArea:
+	case shapeType::Logo:
+		myrect = QRectF(this->rect().topLeft(), (this->rect().size()+QSizeF((blnFirst ? fltChange : 0),(blnFirst ? 0: fltChange))));
+		this->setRect(myrect);
+		break;
+	case shapeType::Transparent:
+		myrect = QRectF(this->rect().topLeft(), (this->rect().size()+QSizeF((blnFirst ? fltChange : 0),(blnFirst ? 0: fltChange))));
+		this->setRect(myrect);
+		fnLoadBackGroundImage();
+		break;
+	case shapeType::DrawGraph:
+		if(blnDoLineThickness)
+		{
+
+            clsGlobal::vecGlobal[0]->objVarGlbReadSetting.fltGraphLineThickness = clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness()+(blnIncreased ? 0.1 : -0.1);
+            clsGlobal::vecGlobal[0]->objVarGlbWriteSetting.setFltGraphLineThickness(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.fltGraphLineThickness);
+			fnDrawGraphLineByMouseRefresh();
+		}
+		else
+		{
+			myrect = QRectF(this->rect().topLeft(), (this->rect().size()+QSizeF((blnFirst ? fltChange : 0),(blnFirst ? 0: fltChange))));
+			this->setRect(myrect);
+
+			if(objAtachedGraphicsObject_2.data()!=0 && blnFirst)
+			{
+				rec = (QGraphicsRectItem*)objAtachedGraphicsObject_2.data();
+				rec->moveBy(fltChange,0);
+			}
+		}
+		break;
+	case shapeType::VDotedLine:
+		lin = (QGraphicsLineItem*)objAtachedGraphicsObject_1.data();
+		myline = QLineF(lin->line().p1(),(lin->line().p2()+QPointF(0,fltChange)));
+		lin->setLine(myline);
+		break;
+	case shapeType::HDotedLine:
+		lin = (QGraphicsLineItem*)objAtachedGraphicsObject_1.data();
+		myline = QLineF(lin->line().p1(),(lin->line().p2()+QPointF(fltChange,0)));
+		lin->setLine(myline);
+		break;
+	case shapeType::DoubleLine:
+	case shapeType::SingleLine:
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnCreateRect()
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+	case shapeType::PeakNumberErase:
+        this->setRect(0,0,clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltRectWidth(),clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltRectHeight());
+		break;
+	case shapeType::DrawGraph:
+	case shapeType::VDotedLine:
+	case shapeType::HDotedLine:
+	case shapeType::DoubleLine:
+	case shapeType::SingleLine:
+	case shapeType::BlankArea:
+	case shapeType::Transparent:
+	case shapeType::Logo:
+        qDebug() << "Init box size = " + QString::number(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltRectWidth());
+        this->setRect(0,0,clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltBoxSize(),clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltBoxSize());
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnCreateDotedLine()
+{
+	QVector<qreal> dashes;
+	QGraphicsLineItem *lin;
+    dashes << clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltDotLizeBarSize() << clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltDotLizeGapSize();
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setWidth(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltDotLineWidthSize());
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setDashPattern(dashes);
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.clrGrey);
+
+	float XPos = pos().x() + (rect().width()/2);
+	float YPos = pos().y() + (rect().height()/2);
+
+	switch(enmShape)
+	{
+	case shapeType::VDotedLine:
+		lin = new QGraphicsLineItem(XPos,YPos,XPos,YPos+intInitLineSize,this);
+		break;
+	case shapeType::HDotedLine:
+		lin = new QGraphicsLineItem(XPos,YPos,XPos+intInitLineSize,YPos,this);
+		break;
+	}
+
+    lin->setPen(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen);
+	objAtachedGraphicsObject_1.reset(lin);
+}
+
+void myQGraphicsRectItem::fnCreatePlainLine()
+{
+	QGraphicsLineItem *lin_1, *lin_2;
+	float XPos = pos().x() + (rect().width()/2);
+	float YPos = pos().y();
+
+	float intHeight = this->rect().height();
+
+
+	switch(enmShape)
+	{
+	case shapeType::SingleLine:
+		lin_1 = new QGraphicsLineItem(XPos,YPos,XPos,YPos+intHeight,this);
+		break;
+	case shapeType::DoubleLine:
+		XPos = pos().x() + (rect().width()/3);
+		lin_1 = new QGraphicsLineItem(XPos,YPos,XPos,YPos+intHeight,this);
+		XPos = pos().x() + (rect().width()/3)*2;
+		lin_2 = new QGraphicsLineItem(XPos,YPos,XPos,YPos+intHeight,this);
+
+		objAtachedGraphicsObject_2.reset(lin_2);
+		break;
+	}
+	objAtachedGraphicsObject_1.reset(lin_1);
+}
+
+void myQGraphicsRectItem::fnCreateCircle()
+{
+	float intSize=5.0;
+    float intPos = (clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltBoxSize()-intSize)/2.0;
+	QGraphicsEllipseItem *circle = new QGraphicsEllipseItem(intPos,intPos,intSize,intSize,this);
+	objAtachedGraphicsObject_1.reset(circle);
+}
+
+void myQGraphicsRectItem::fnClearUnwantedArea()
+{
+
+}
+
+void myQGraphicsRectItem::fnCreateUnwantedAreaRect()
+{
+
+}
+
+void myQGraphicsRectItem::fnZoomInUnwantedAreaRect()
+{
+
+}
+
+void myQGraphicsRectItem::fnZoomOutUnwantedAreaRect()
+{
+
+}
+
+bool myQGraphicsRectItem::sceneEvent(QEvent *event)
+{
+	QGraphicsItem::sceneEvent(event);
+	if(objAtachedGraphicsObject_1.data()==0)
+	{
+		switch(enmShape)
+		{
+		case shapeType::PeakNumberDraw:
+			break;
+		case shapeType::PeakNumberErase:
+			break;
+		case shapeType::DrawGraph:
+			break;
+		case shapeType::VDotedLine:
+		case shapeType::HDotedLine:
+			break;
+		}
+	}
+}
+
+void myQGraphicsRectItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::Logo:
+	case shapeType::DrawGraph:
+		blnStartDrawing=true;
+		break;
+	}
+	QGraphicsRectItem::mousePressEvent(event);
+}
+
+void myQGraphicsRectItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::Logo:
+		if(blnStartDrawing)
+		{
+			int SingBlockMaxX = this->rect().width()/intActualRangeTimes;
+
+			int intTotal = intMaxRangeValue-intSingleBloclValueInRange;
+			float fltRange = (float)intMaxRangeValue - (((float)(event->pos().x() * (intSingleBloclValueInRange)))/(float)SingBlockMaxX);
+
+			fnDrawRangeText(QString::number(fltRange) + ", " + QString::number(event->pos().x()));
+		}
+		break;
+	}
+	if(isLockedByEnterKey)
+	{
+		switch(enmShape)
+		{
+		case shapeType::DrawGraph:
+			if (objPth.isPathDefined && blnStartDrawing && objPth.blnByMouse)
+			{
+				fnDrawGraphLineByMouse(event->pos());
+			}
+			break;
+		}
+	}
+	else
+	{
+		QGraphicsRectItem::mouseMoveEvent(event);
+	}
+
+}
+
+void myQGraphicsRectItem::mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::Logo:
+	case shapeType::DrawGraph:
+		blnStartDrawing=false;
+		break;
+	case shapeType::Transparent:
+		fnLoadBackGroundImage();
+		break;
+	}
+	QGraphicsRectItem::mouseReleaseEvent(event);
+}
+
+void myQGraphicsRectItem::fnLoadBackGroundImage(bool blnRefresh)
+{
+	if(this->scene())
+	{
+		QPixmap pix;
+		if(blnRefresh)
+		{
+			pix = QPixmap(this->rect().size().toSize());
+			QGraphicsPixmapItem *pixmap;
+			pixmap = new QGraphicsPixmapItem(pix,this);
+			objAtachedGraphicsObject_1.reset(pixmap);
+			return;
+		}
+		if(blnStartCopy)
+		{
+			//main image (backgroup image)
+            QGraphicsPixmapItem *pixmapOfScene =  (QGraphicsPixmapItem*)clsGlobal::vecGlobal[0]->objVarGlbReadSetting.vecGraphicsItem.at(0);
+			//pix = QPixmap(pixmapOfScene->pixmap().copy(QRectF(this->scenePos(),this->rect().size()).toRect()));
+			QPointF po = this->scenePos();
+			//po+=(QPointF(1,1));
+			QSizeF sf= this->rect().size();
+			sf+=QSizeF(-1,-1);
+			pix = QPixmap(pixmapOfScene->pixmap().copy(QRectF(this->scenePos(),sf).toRect()));
+
+			QGraphicsPixmapItem *pixmap;
+			pixmap = new QGraphicsPixmapItem(pix,this);
+			objAtachedGraphicsObject_1.reset(pixmap);
+		}
+	}
+}
+
+void myQGraphicsRectItem::fnLoadBackGroundImageResize(bool blnIncrease)
+{
+	if(this->scene())
+	{
+		//QPixmap pix;
+
+		QGraphicsPixmapItem *pixmap = (QGraphicsPixmapItem*)objAtachedGraphicsObject_1.data();
+		QPixmap pix = pixmap->pixmap();
+		//float fltChange=blnIncrease ? 0.1;
+		QPixmap pix1;
+		if(blnFirst)
+			pix1 = pix.copy(QRect(1,0,pix.width()-1,pix.height()));
+		else
+			pix1 = pix.copy(QRect(0,0,pix.width()-1,pix.height()));
+		//QGraphicsPixmapItem *pixmap;
+		QGraphicsPixmapItem *pixmap1 = new QGraphicsPixmapItem(pix1,this);
+		objAtachedGraphicsObject_1.reset(pixmap1);
+		this->setRect(pix1.rect());
+		this->update();
+	}
+}
+
+void myQGraphicsRectItem::fnMoveBoxUpDown(bool blnKeyUp)
+{
+	if(objPth.isPathDefined )
+		return;
+	QGraphicsRectItem *rec;
+	rec = (QGraphicsRectItem*)(blnFirst ? objAtachedGraphicsObject_1.data() : objAtachedGraphicsObject_2.data());
+	if ((rec->pos().y()==0 && blnKeyUp) ||(rec->pos().y() + rec->rect().height() ==this->rect().height() && !blnKeyUp))
+	{
+		return;
+	}
+	blnKeyUp ? rec->moveBy(0,-1) : rec->moveBy(0,1);
+}
+
+void myQGraphicsRectItem::fnMovePlotCursor(bool blnRight)
+{
+	QGraphicsPathItem *pth = (QGraphicsPathItem*)objAtachedGraphicsObject_1.data();
+	QGraphicsRectItem *rec = (QGraphicsRectItem*)objAtachedGraphicsObject_2.data();
+	QPainterPath painterPth;
+
+	painterPth = pth->path();
+	blnRight ? objPth.fltCurrCursorIndex+=1 : objPth.fltCurrCursorIndex-=1;
+
+	if(objPth.fltCurrCursorIndex>=0 && objPth.fltCurrCursorIndex<=painterPth.elementCount()-1)
+	{
+		rec->setPos(painterPth.elementAt(objPth.fltCurrCursorIndex).x,painterPth.elementAt(objPth.fltCurrCursorIndex).y - (rec->rect().height()/2));
+	}
+	else
+	{
+		blnRight ? objPth.fltCurrCursorIndex-=1 : objPth.fltCurrCursorIndex+=1;
+	}
+	objPth.fltBendMovement=0;
+}
+
+void myQGraphicsRectItem::fnBendGraphLine(bool blnDown)
+{
+	QGraphicsPathItem *pth = (QGraphicsPathItem*)objAtachedGraphicsObject_1.data();
+	QGraphicsRectItem *rec = (QGraphicsRectItem*)objAtachedGraphicsObject_2.data();
+	QPainterPath painterPth_actual, painterPth_created;
+
+	painterPth_actual = pth->path();
+
+	blnDown ? objPth.fltBendMovement+=.5 : objPth.fltBendMovement-=.5;
+
+	//first path element wont bend
+	painterPth_created = QPainterPath(QPointF(painterPth_actual.elementAt(0).x, painterPth_actual.elementAt(0).y));
+
+	//last path element wont bend
+	for(int iCount=1; iCount<painterPth_actual.elementCount(); iCount++)
+	{
+		if(iCount<painterPth_actual.elementCount()-1 && iCount>=objPth.fltCurrCursorIndex - qAbs(objPth.fltBendMovement) && iCount<=objPth.fltCurrCursorIndex + qAbs(objPth.fltBendMovement))
+		{
+			//rejecting last path element
+			painterPth_created.lineTo(QPointF(painterPth_actual.elementAt(iCount).x, painterPth_actual.elementAt(iCount).y + (blnDown ? +1 :-1)));
+		}
+		else
+		{
+			painterPth_created.lineTo(QPointF(painterPth_actual.elementAt(iCount).x, painterPth_actual.elementAt(iCount).y));
+		}
+	}
+
+	pth->setPath(painterPth_created);
+	rec->setPos(painterPth_created.elementAt(objPth.fltCurrCursorIndex).x,painterPth_created.elementAt(objPth.fltCurrCursorIndex).y - (rec->rect().height()/2));
+}
+
+void myQGraphicsRectItem::fnDrawGraphLineByMouse(QPointF newPos)
+{
+	if(this->rect().width() >=newPos.x() && newPos.x()>=0 && this->rect().height() >=newPos.y() && newPos.y()>=0)
+	{
+		QGraphicsPathItem *pth = (QGraphicsPathItem*)objAtachedGraphicsObject_1.data();
+		QPainterPath painterPth;
+
+		painterPth = pth->path();
+
+		painterPth.lineTo(newPos);
+
+		pth->setPath(painterPth);
+	}
+}
+
+void myQGraphicsRectItem::fnDrawGraphLineByMouseRefresh()
+{
+	QGraphicsPathItem *pth = (QGraphicsPathItem*)objAtachedGraphicsObject_1.data();
+	QPainterPath painterPth;
+
+	painterPth = pth->path();
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen = pth->pen();
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setWidth(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness());
+
+    //clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setStyle(Qt::SolidLine);
+    //clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.ColorOnLocked);
+    //clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setWidth(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.getFltGraphLineThickness());
+    pth->setPen(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen);
+
+	//painterPth.lineTo(newPos);
+
+	pth->setPath(painterPth);
+}
+
+void myQGraphicsRectItem::fnGraphChangeColor()
+{
+	QGraphicsPathItem *pth = (QGraphicsPathItem*)objAtachedGraphicsObject_1.data();
+    clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen = pth->pen();
+
+    if(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.color()==clsGlobal::vecGlobal[0]->objVarGlbReadSetting.clrGraphBlue)
+        clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.clrGraphGreen);
+    else if(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.color()==clsGlobal::vecGlobal[0]->objVarGlbReadSetting.clrGraphGreen)
+        clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.ColorOnLocked);
+	else
+        clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen.setColor(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.clrGraphBlue);
+
+    pth->setPen(clsGlobal::vecGlobal[0]->objVarGlbReadSetting.objPen);
+}
+
+void myQGraphicsRectItem::fnTextChangeLineShape()
+{
+	QGraphicsPathItem *pth = (QGraphicsPathItem*)objAtachedGraphicsObject_2.data();
+	QPainterPath ppth = pth->path(), ppth_temp;
+
+	float fltXValue = ppth.elementAt(0).x + ((this->rect().width()/6)*1);
+
+	if(fltXValue==this->rect().x()+((this->rect().width()/6)*6))
+		fltXValue=this->rect().x()+((this->rect().width()/6)*1);
+
+	ppth_temp = QPainterPath(QPointF(fltXValue,10));
+    ppth_temp.lineTo(QPointF(fltXValue,(9*2)));
+	ppth_temp.lineTo(ppth.elementAt(2));
+	ppth_temp.lineTo(ppth.elementAt(3));
+	pth->setPath(ppth_temp);
+}
+
+void myQGraphicsRectItem::fnWidth1()
+{
+	qDebug()<<"Width1 called";
+}
+
+void myQGraphicsRectItem::fnWidth(QKeyEvent *event)
+{
+	fnLeft(event);
+    //fnKey_EnterReleased(event);
+}
+
+void myQGraphicsRectItem::fnHeight(QKeyEvent *event)
+{
+	fnRight(event);
+    //fnKey_EnterReleased(event);
+}
+
+void myQGraphicsRectItem::fnLeft(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+	case shapeType::BlankArea:
+	case shapeType::Transparent:
+	case shapeType::Logo:
+		blnFirst=true;
+		//blnLoadBGImage=true;
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnRight(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+	case shapeType::BlankArea:
+	case shapeType::Transparent:
+	case shapeType::Logo:
+		blnFirst=false;
+		//blnLoadBGImage=
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnDrawManual(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		fnAddPathItemMouseDraw();
+		break;
+	}
+    //fnKey_EnterPressed(event);
+}
+
+void myQGraphicsRectItem::fnDrawAuto(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		fnAddPathItem();
+		break;
+	}
+    //fnKey_EnterPressed(event);
+}
+
+void myQGraphicsRectItem::fnLineThickness(QKeyEvent *event)
+{
+    //fnKey_EnterPressed(event);
+	blnDoLineThickness=true;
+}
+
+void myQGraphicsRectItem::fnLineGapSize(QKeyEvent *event)
+{
+
+}
+
+void myQGraphicsRectItem::fnLineNonGapSize(QKeyEvent *event)
+{
+
+}
+
+void myQGraphicsRectItem::fnLock(QKeyEvent *event)
+{
+
+}
+
+void myQGraphicsRectItem::fnUnLock(QKeyEvent *event)
+{
+
+}
+
+void myQGraphicsRectItem::fnKey_1(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		strPeakNumber = strPeakNumber + event->text();
+		fnDrawFloatText(strPeakNumber);
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnKey_2(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		strPeakNumber = strPeakNumber + event->text();
+		fnDrawFloatText(strPeakNumber);
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnKey_3(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		strPeakNumber = strPeakNumber + event->text();
+		fnDrawFloatText(strPeakNumber);
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnKey_4(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		strPeakNumber = strPeakNumber + event->text();
+		fnDrawFloatText(strPeakNumber);
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnKey_5(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		strPeakNumber = strPeakNumber + event->text();
+		fnDrawFloatText(strPeakNumber);
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnDrawReset(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		fnAdd2ChildRects();
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnKey_6(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		fnAdd2ChildRects();
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnKey_Plus(QKeyEvent *event)
+{
+
+}
+
+void myQGraphicsRectItem::fnKey_Minus(QKeyEvent *event)
+{
+
+}
+
+void myQGraphicsRectItem::fnKey_EnterPressed(QKeyEvent *event)
+{
+	isLockedByEnterKey = true;
+}
+
+void myQGraphicsRectItem::fnKey_EnterReleased(QKeyEvent *event)
+{
+	isLockedByEnterKey = false;
+	blnDoLineThickness=false;
+}
+
+void myQGraphicsRectItem::fnLeftCurDown(QKeyEvent *event)
+{
+	fnLeft(event);
+    //fnKey_EnterPressed(event);
+}
+
+void myQGraphicsRectItem::fnRightCurDown(QKeyEvent *event)
+{
+	fnRight(event);
+    //fnKey_EnterPressed(event);
+}
+
+void myQGraphicsRectItem::fnKey_Alt_Pressed(QKeyEvent *event)
+{
+	isAltPressed=true;
+}
+
+void myQGraphicsRectItem::fnKey_Alt_Released(QKeyEvent *event)
+{
+	isAltPressed=false;
+}
+
+void myQGraphicsRectItem::fnKey_Ctrl_Pressed(QKeyEvent *event)
+{
+	isCtrlPressed=true;
+}
+
+void myQGraphicsRectItem::fnKey_Ctrl_Released(QKeyEvent *event)
+{
+	isCtrlPressed=false;
+}
+
+void myQGraphicsRectItem::fnKey_Left(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		if(objPth.isPathDefined && isLockedByEnterKey && !objPth.blnByMouse)
+		{
+			fnMovePlotCursor(false);
+		}
+		break;
+	case shapeType::Transparent:
+		fnLoadBackGroundImage();
+		break;
+	}
+}
+void myQGraphicsRectItem::fnKey_Up(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		if(isAltPressed)
+		{
+			fnMoveBoxUpDown(true);
+		}
+		else if(objPth.isPathDefined && isLockedByEnterKey && !objPth.blnByMouse)
+		{
+			fnBendGraphLine(false);
+		}
+		break;
+	case shapeType::Transparent:
+		fnLoadBackGroundImage();
+		break;
+	}
+}
+void myQGraphicsRectItem::fnKey_Right(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		if(objPth.isPathDefined && isLockedByEnterKey && !objPth.blnByMouse)
+		{
+			fnMovePlotCursor(true);
+		}
+		break;
+	case shapeType::Transparent:
+		fnLoadBackGroundImage();
+		break;
+	}
+}
+void myQGraphicsRectItem::fnKey_Down(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		if(isAltPressed)
+		{
+			fnMoveBoxUpDown(false);
+		}
+		else if(objPth.isPathDefined && isLockedByEnterKey && !objPth.blnByMouse)
+		{
+			fnBendGraphLine(true);
+		}
+		break;
+	case shapeType::Transparent:
+		fnLoadBackGroundImage();
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnKey_Backspace(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		if(strPeakNumber!="")
+		{
+			strPeakNumber = strPeakNumber.mid(0,strPeakNumber.length()-1);
+			fnDrawFloatText(strPeakNumber);
+		}
+		break;
+	}
+}
+void myQGraphicsRectItem::fnKey_Space(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::DrawGraph:
+		fnGraphChangeColor();
+		break;
+	case shapeType::PeakNumberDraw:
+		fnTextChangeLineShape();
+		break;
+	}
+}
+
+void myQGraphicsRectItem::fnKey_Period(QKeyEvent *event)
+{
+	switch(enmShape)
+	{
+	case shapeType::PeakNumberDraw:
+		strPeakNumber = strPeakNumber + event->text();
+		fnDrawFloatText(strPeakNumber);
+		break;
+	}
+}
+
+void myQGraphicsRectItem::keyPressEvent(QKeyEvent *event)
+{
+	QRectF rf;
+	switch(event->key())
+	{
+	case Qt::Key_Backspace:
+		fnKey_Backspace(event);
+		switch(enmShape)
+		{
+		case shapeType::DrawGraph:
+			fnAddPathItemMouseDraw();
+			break;
+		}
+		break;
+	case Qt::Key_6:
+	case Qt::Key_7:
+	case Qt::Key_8:
+	case Qt::Key_9:
+	case Qt::Key_0:
+	case Qt::Key_Period:
+		fnKey_Period(event);
+		break;
+	case Qt::Key_3: //Fix Mouse Draw
+		fnKey_3(event);
+		fnDrawManual(event);
+		break;
+	case Qt::Key_4: //Fix Arrow Keys
+		fnKey_4(event);
+		fnDrawAuto(event);
+		break;
+	case Qt::Key_5: //Refresh
+		fnKey_5(event);
+		fnDrawReset(event);
+		break;
+	case Qt::Key_Tab:
+		break;
+	case Qt::Key_Space:
+		fnKey_Space(event);
+		break;
+	case Qt::Key_1:
+		fnKey_1(event);
+		fnLeft(event);
+		break;
+	case Qt::Key_2:
+		fnKey_2(event);
+		fnRight(event);
+		break;
+	case Qt::Key_Up:
+		fnKey_Up(event);
+		break;
+	case Qt::Key_Down:
+		fnKey_Down(event);
+		break;
+	case Qt::Key_Left:
+		fnKey_Left(event);
+		break;
+	case Qt::Key_Right:
+		fnKey_Right(event);
+		break;
+	case Qt::Key_Control:
+		fnKey_Ctrl_Pressed(event);
+		break;
+	case Qt::Key_Alt:
+		fnKey_Alt_Pressed(event);
+		break;
+	case Qt::Key_C:
+		blnStartCopy=true;
+		fnLoadBackGroundImage();
+		break;
+	case Qt::Key_S:
+		blnStartCopy=false;
+		break;
+	case Qt::Key_R:
+		switch(enmShape)
+		{
+		case shapeType::Logo:
+			intActualRangeTimes = QInputDialog::getInt(QApplication::activeWindow(),"Range Detector","Enter Increase times",11);
+			rf = QRectF(this->pos(),QSizeF(this->rect().width()*intActualRangeTimes, this->rect().height()));
+			this->setRect(this->rect().x() ,this->rect().y(),this->rect().width()*intActualRangeTimes, this->rect().height());
+			intMaxRangeValue = QInputDialog::getInt(QApplication::activeWindow(),"Range Detector","Enter Max Value",4000);
+			intSingleBloclValueInRange = QInputDialog::getInt(QApplication::activeWindow(),"Range Detector","Enter Single Block Value",500);
+			break;
+		case shapeType::Transparent:
+			fnLoadBackGroundImageResize(false);
+			break;
+		}
+		break;
+	case Qt::Key_Return:
+		if(!isLockedByEnterKey)
+			fnKey_EnterPressed(event);
+		else
+			fnKey_EnterReleased(event);
+		break;
+	}
+}
+
+void myQGraphicsRectItem::keyReleaseEvent(QKeyEvent *event)
+{
+	switch(event->key())
+	{
+	case Qt::Key_Delete:
+		break;
+	case Qt::Key_Control:
+		fnKey_Ctrl_Released(event);
+		break;
+	case Qt::Key_Alt:
+		fnKey_Alt_Released(event);
+		break;
+	}
+}

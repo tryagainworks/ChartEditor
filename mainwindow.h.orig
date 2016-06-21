@@ -1,0 +1,45 @@
+#ifndef MAINWINDOW_H
+#define MAINWINDOW_H
+
+#include <QMainWindow>
+#include <QGraphicsScene>
+#include <QGraphicsRectItem>
+#include <QGraphicsEllipseItem>
+
+namespace Ui {
+class MainWindow;
+}
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    explicit MainWindow(QWidget *parent = 0);
+    ~MainWindow();
+
+private slots:
+
+    void on_cmdLoad_clicked();
+
+private:
+    Ui::MainWindow *ui;
+    bool fnClearUnwantedArea(QRect &rect);
+    bool fnCreateUnwantedAreaRect(QGraphicsRectItem &RectItem);
+    bool fnZoomInUnwantedAreaRect(QGraphicsRectItem &RectItem);
+    bool fnZoomOutUnwantedAreaRect(QGraphicsRectItem &RectItem);
+    bool fnMoveUnwantedAreaRect(QGraphicsRectItem &RectItem);
+
+    bool fnCreateGraphicsLineDot(QGraphicsEllipseItem &ElipsItem);
+    bool fnMoveGraphicsLineDot(QGraphicsEllipseItem &ElipsItem, int xPos, int yPos);
+    bool fnDrawGraphicsLineByDot(QGraphicsEllipseItem &ElipsItem, int yPos);
+    bool fnEraseGraphicsLineByDot(QGraphicsEllipseItem &ElipsItem, int yPos);
+    int fnGetGraphLineThickness();
+    int fnGetXIncrementPixelCount();
+    int fnGetYIncrementPixelCount();
+    bool fnLoadPDFFileAsImage();
+    bool fnReLoadPDFFileAsImage();
+    bool fnSaveImageFileAsPDF();
+};
+
+#endif // MAINWINDOW_H

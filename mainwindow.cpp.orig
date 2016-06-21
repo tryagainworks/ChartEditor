@@ -1,0 +1,251 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+
+extern clsGlobalVariables objVarGlb;
+
+MainWindow::MainWindow(QWidget *parent) :
+	QMainWindow(parent),
+	ui(new Ui::MainWindow)
+{
+	ui->setupUi(this);
+	scene = new QGraphicsScene(this);
+	ui->graphicsView->setScene(scene);
+}
+
+MainWindow::~MainWindow()
+{
+    fnDeallocateObjects();
+	delete ui;
+}
+
+void MainWindow::fnDeallocateObjects(){
+    for(int iCount=0; iCount<objVarGlb.vecGraphicsItem.count(); iCount++)
+    {
+        if(objVarGlb.vecGraphicsItem.at(iCount)!=NULL)
+        {
+            qDebug() << "Removed from for loop (" + QString::number(iCount) + ")";
+            delete objVarGlb.vecGraphicsItem.at(iCount);
+        }
+    }
+    objVarGlb.vecGraphicsItem.clear();
+    pdf.fnDeleteAllPNGFiles();
+}
+
+
+void MainWindow::on_cmdLoad_clicked()
+{
+	if(fnConvertPDFFileAsImage())
+	{
+        ui->fraToolContainer->setEnabled(true);
+	}
+}
+
+bool MainWindow::fnConvertPDFFileAsImage()
+{
+    fnDeallocateObjects();
+	QFileDialog objF(this,"Open PDF File",objVarGlb.getStrPDFDirPath());
+	objF.setNameFilter("PDF Files (*.pdf)");
+	objF.exec();
+	clsWriteSettings writeSet;
+	writeSet.setStrPDFDirPath(objF.directory().absolutePath());
+	QString strPNGFile = pdf.fnSaveAsPNG(objF.selectedFiles().at(0),objVarGlb.getFltZoom());
+	if(!strPNGFile.startsWith('*'))
+	{
+		if(fnLoadPDFFileAsImage(strPNGFile))
+		{
+			QMessageBox::information(this,"Information","File Loaded Successfully. You can edit now.");
+		}
+	}
+	else
+	{
+		QMessageBox::critical(this,"Error","Failed to load the file. (PNG Image file not created. Call System Admin.)");
+		return false;
+	}
+}
+
+bool MainWindow::fnLoadPDFFileAsImage(const QString &strPNGFile)
+{
+	QPixmap pix = QPixmap::fromImage(QImage(strPNGFile));
+	scene->setSceneRect((QRectF)pix.rect());
+	//scene->setItemIndexMethod(QGraphicsScene::NoIndex);
+	scene->addPixmap(pix);
+	return true;
+}
+
+bool MainWindow::fnReLoadPDFFileAsImage()
+{
+	return false;
+}
+
+bool MainWindow::fnSaveImageFileAsPDF()
+{
+	return false;
+}
+
+void MainWindow::on_cmdPeakNumber_clicked()
+{
+	myGraphicsItem<myQGraphicsRectItem> *jj = new myGraphicsItem<myQGraphicsRectItem>(shapeType::PeakNumberDraw);
+	objVarGlb.vecGraphicsItem.push_back(jj);
+	scene->addItem(jj);
+	scene->setFocusItem(jj);
+	scene->setFocus();
+}
+
+void MainWindow::on_cmdPeakNumberErase_clicked()
+{
+	myGraphicsItem<myQGraphicsRectItem> *jj = new myGraphicsItem<myQGraphicsRectItem>(shapeType::PeakNumberErase);
+	objVarGlb.vecGraphicsItem.push_back(jj);
+	scene->addItem(jj);
+	scene->setFocusItem(jj);
+	scene->setFocus();
+}
+
+void MainWindow::on_cmdSingleLine_clicked()
+{
+	myGraphicsItem<myQGraphicsRectItem> *jj = new myGraphicsItem<myQGraphicsRectItem>(shapeType::SingleLine);
+	objVarGlb.vecGraphicsItem.push_back(jj);
+	scene->addItem(jj);
+	scene->setFocusItem(jj);
+	scene->setFocus();
+}
+
+void MainWindow::on_cmdDoubleLine_clicked()
+{
+	myGraphicsItem<myQGraphicsRectItem> *jj = new myGraphicsItem<myQGraphicsRectItem>(shapeType::DoubleLine);
+	objVarGlb.vecGraphicsItem.push_back(jj);
+	scene->addItem(jj);
+	scene->setFocusItem(jj);
+	scene->setFocus();
+}
+
+void MainWindow::on_cmdGraph_clicked()
+{
+	myGraphicsItem<myQGraphicsRectItem> *jj = new myGraphicsItem<myQGraphicsRectItem>(shapeType::DrawGraph);
+	objVarGlb.vecGraphicsItem.push_back(jj);
+	scene->addItem(jj);
+	scene->setFocusItem(jj);
+	scene->setFocus();
+}
+
+void MainWindow::on_cmdHDot_clicked()
+{
+	myGraphicsItem<myQGraphicsRectItem> *jj = new myGraphicsItem<myQGraphicsRectItem>(shapeType::HDotedLine);
+	objVarGlb.vecGraphicsItem.push_back(jj);
+	scene->addItem(jj);
+	scene->setFocusItem(jj);
+	scene->setFocus();
+}
+
+void MainWindow::on_cmdVDot_clicked()
+{
+	myGraphicsItem<myQGraphicsRectItem> *jj = new myGraphicsItem<myQGraphicsRectItem>(shapeType::VDotedLine);
+	objVarGlb.vecGraphicsItem.push_back(jj);
+	scene->addItem(jj);
+	scene->setFocusItem(jj);
+	scene->setFocus();
+}
+
+void MainWindow::on_cmdEraser_clicked()
+{
+	myGraphicsItem<myQGraphicsRectItem> *jj = new myGraphicsItem<myQGraphicsRectItem>(shapeType::BlankArea);
+	objVarGlb.vecGraphicsItem.push_back(jj);
+	scene->addItem(jj);
+	scene->setFocusItem(jj);
+	scene->setFocus();
+}
+
+void MainWindow::on_cmdPreview_clicked()
+{
+	fnPreview();
+}
+
+void MainWindow::fnPreview()
+{
+    if(!blnIsCurrentlyPreview)
+	{
+        blnIsCurrentlyPreview = true;
+		ui->cmdPreview->setText("Undo Preview");
+		ui->fraToolContainer->setEnabled(false);
+		for(int iCount=0; iCount<objVarGlb.vecGraphicsItem.count(); iCount++)
+		{
+			if(objVarGlb.vecGraphicsItem.at(iCount)!=0)
+			{
+				myQGraphicsRectItem *rect = (myQGraphicsRectItem*)objVarGlb.vecGraphicsItem.at(iCount);
+				rect->setEnabled(false);
+				objVarGlb.objPen=rect->pen();
+				objVarGlb.objBrush=rect->brush();
+				objVarGlb.vecPen.push_back(objVarGlb.objPen);
+				objVarGlb.vecBrush.push_back(objVarGlb.objBrush);
+				objVarGlb.objPen.setColor(objVarGlb.clrWhite);
+				rect->setPen(objVarGlb.objPen);
+
+				switch(rect->enmShape)
+				{
+				case shapeType::BlankArea:
+				case shapeType::PeakNumberErase:
+					objVarGlb.objBrush.setStyle(Qt::SolidPattern);
+					objVarGlb.objBrush.setColor(objVarGlb.clrWhite);
+					rect->setBrush(objVarGlb.objBrush);
+					break;
+                case shapeType::HDotedLine:
+                case shapeType::VDotedLine:
+                    objVarGlb.objBrush.setStyle(Qt::NoBrush);
+                    rect->setBrush(objVarGlb.objBrush);
+                    break;
+				}
+			}
+			else
+			{
+				objVarGlb.vecPen.push_back(QPen());
+				objVarGlb.vecBrush.push_back(QBrush());
+			}
+		}
+	}
+	else
+	{
+        blnIsCurrentlyPreview = false;
+		ui->cmdPreview->setText("Preview");
+		ui->fraToolContainer->setEnabled(true);
+		for(int iCount=0; iCount<objVarGlb.vecGraphicsItem.count(); iCount++)
+		{
+			if(objVarGlb.vecGraphicsItem.at(iCount)!=0)
+			{
+				myQGraphicsRectItem *rect = (myQGraphicsRectItem*)objVarGlb.vecGraphicsItem.at(iCount);
+				rect->setEnabled(true);
+				objVarGlb.objPen =objVarGlb.vecPen.at(iCount);
+				objVarGlb.objBrush =objVarGlb.vecBrush.at(iCount);
+				rect->setPen(objVarGlb.objPen);
+				rect->setBrush(objVarGlb.objBrush);
+			}
+		}
+		objVarGlb.vecPen.clear();
+		objVarGlb.vecBrush.clear();
+	}
+}
+
+void MainWindow::on_cmdSettings_clicked()
+{
+
+}
+
+void MainWindow::on_cmdSaveAsImage_clicked()
+{
+    bool blnPreviewed=false;
+    if(!blnIsCurrentlyPreview){
+        fnPreview();
+        blnPreviewed=true;
+    }
+    QImage img(ui->graphicsView->scene()->sceneRect().size().toSize(),QImage::Format_RGB32);
+    QPainter painter(&img);
+    ui->graphicsView->scene()->clearSelection();
+    ui->graphicsView->scene()->render(&painter);
+    img.save("/home/linuxmintuser02/abc.png","PNG");
+    if(blnPreviewed){
+    fnPreview();
+    }
+}
+
+void MainWindow::on_cmdLoadProject_clicked()
+{
+
+}
